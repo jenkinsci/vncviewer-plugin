@@ -59,9 +59,9 @@
 		</developer>
 	</developers>
  <scm>
-    <connection>scm:svn:https://svn.jenkins-ci.org/tags/vncviewer-1.0</connection>
-    <developerConnection>scm:svn:https://svn.jenkins-ci.org/tags/vncviewer-1.0</developerConnection>
-    <url>https://svn.jenkins-ci.org/tags/vncviewer-1.0</url>
+    <connection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</connection>
+    <developerConnection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</developerConnection>
+    <url>https://svn.jenkins-ci.org/trunk/vncviewer</url>
   </scm>
   
   <url>http://wiki.jenkins-ci.org/display/JENKINS/VncViewer+Plugin</url>
