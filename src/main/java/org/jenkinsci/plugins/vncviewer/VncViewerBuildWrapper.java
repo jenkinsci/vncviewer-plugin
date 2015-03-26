@@ -129,7 +129,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		}
 
 		String hostAddr = InetAddress.getLocalHost().getHostName();
-		String url = "http://" + hostAddr + ":" + localPort + "/vnc_auto.html?host=" + hostAddr + "&port=" + localPort;
+		String url = "http://" + hostAddr + ":" + lp + "/vnc_auto.html?host=" + hostAddr + "&port=" + lp;
 		String txt = "Start vnc viewer for " + vncServReplaced;
 		listener.getLogger().print('\n');
 		listener.annotate(new VncHyperlinkNote(url,txt.length()));
