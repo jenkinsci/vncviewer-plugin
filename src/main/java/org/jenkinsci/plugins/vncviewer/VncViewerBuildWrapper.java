@@ -92,6 +92,11 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		{
 			vncServReplaced += ":5900";
 		}
+		if (vncServReplaced.split(":")[1].length() == 2)
+		{
+			vncServReplaced = vncServReplaced.replace(":", ":59");
+		}
+		
 		try {
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"),System.getProperty("java.io.tmpdir"));
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/websockify.tar"),System.getProperty("java.io.tmpdir"));
