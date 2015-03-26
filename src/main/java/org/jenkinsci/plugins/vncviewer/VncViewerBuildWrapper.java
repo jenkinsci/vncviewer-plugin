@@ -80,17 +80,17 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			final BuildListener listener) throws IOException, InterruptedException
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
-		vncServ = Util.replaceMacro(vncServ,build.getEnvironment(listener));
+		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
 		int localPort = 8888;
 		Proc noVncProc = null;
 		String lp = String.valueOf(localPort);
 		final ByteArrayOutputStream loggingStream = new ByteArrayOutputStream();
-		if (vncServ.isEmpty())
-			vncServ = DESCRIPTOR.getDefaultVncServ();
+		if (vncServReplaced.isEmpty())
+			vncServReplaced = DESCRIPTOR.getDefaultVncServ();
 
-		if (vncServ.indexOf(":") < 0)
+		if (vncServReplaced.indexOf(":") < 0)
 		{
-			vncServ += ":5900";
+			vncServReplaced += ":5900";
 		}
 		try {
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"),System.getProperty("java.io.tmpdir"));
@@ -106,7 +106,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			for (int i = 0; i < 1000 ; i++ )
 			{
 				lp = String.valueOf(localPort + i);
-				noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,lp,getVncServ()).start();
+				noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,lp,vncServReplaced).start();
 				Thread.sleep(5000);
 				if (noVncProc.isAlive())
 				{
@@ -125,7 +125,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 
 		String hostAddr = InetAddress.getLocalHost().getHostName();
 		String url = "http://" + hostAddr + ":" + localPort + "/vnc_auto.html?host=" + hostAddr + "&port=" + localPort;
-		String txt = "Start vnc viewer for " + vncServ;
+		String txt = "Start vnc viewer for " + vncServReplaced;
 		listener.getLogger().print('\n');
 		listener.annotate(new VncHyperlinkNote(url,txt.length()));
 		listener.getLogger().print(txt);
@@ -135,7 +135,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			@Override
 			public void buildEnvVars(Map<String, String> env) {
 				//				env.put("PATH",env.get("PATH"));
-				//				env.put("DISPLAY", vncServ);
+				//				env.put("DISPLAY", vncServReplaced);
 			}
 			@Override
 			public boolean tearDown(AbstractBuild build, BuildListener listener)
