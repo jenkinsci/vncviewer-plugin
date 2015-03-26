@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.net.InetAddress;
 import java.util.Map;
 
@@ -61,10 +60,6 @@ import org.kohsuke.stapler.StaplerRequest;
 
 public class VncViewerBuildWrapper extends BuildWrapper {
 	private String vncServ;
-	private int localPort = 8888;
-	private Proc noVncProc;
-	private ByteArrayOutputStream loggingStream;
-
 	@DataBoundConstructor
 	public VncViewerBuildWrapper(String vncServ) 
 	{
@@ -79,40 +74,17 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	public void setVncServ(String vncServ) {
 		this.vncServ = vncServ;
 	}
-
-	private void startNoVnc(AbstractBuild build, BuildListener listener, Launcher launcher) throws Exception 
-	{
-		String webSockifyPath = System.getProperty("java.io.tmpdir") + File.separator + "websockify" + File.separator + "websockify.py";
-		File f = new File(webSockifyPath);
-		if (!f.canExecute())
-		{
-			f.setExecutable(true);
-		}
-		String webPath = System.getProperty("java.io.tmpdir") + File.separator + "novnc";
-		PrintStream logger = listener.getLogger();
-		LocalLauncher localLauncher = new LocalLauncher(listener);
-		loggingStream = new ByteArrayOutputStream();
-		for (int i = 0; i < 1000 ; i++ )
-		{
-			noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,String.valueOf(localPort + i),getVncServ()).start();
-			Thread.sleep(3000);
-			if (noVncProc.isAlive())
-			{
-				break;
-			}
-			else
-			{
-				try {noVncProc.kill();}catch (Exception e){} 
-			}
-		}
-	}
-
+	
 	@Override
 	public Environment setUp(@SuppressWarnings("rawtypes")AbstractBuild build, Launcher launcher,
 			final BuildListener listener) throws IOException, InterruptedException
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
 		vncServ = Util.replaceMacro(vncServ,build.getEnvironment(listener));
+		int localPort = 8888;
+		Proc noVncProc = null;
+		String lp = String.valueOf(localPort);
+		final ByteArrayOutputStream loggingStream = new ByteArrayOutputStream();
 		if (vncServ.isEmpty())
 			vncServ = DESCRIPTOR.getDefaultVncServ();
 
@@ -123,19 +95,42 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		try {
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"),System.getProperty("java.io.tmpdir"));
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/websockify.tar"),System.getProperty("java.io.tmpdir"));
-			startNoVnc(build,listener,launcher);
+			String webSockifyPath = System.getProperty("java.io.tmpdir") + File.separator + "websockify" + File.separator + "websockify.py";
+			File f = new File(webSockifyPath);
+			if (!f.canExecute())
+			{
+				f.setExecutable(true);
+			}
+			String webPath = System.getProperty("java.io.tmpdir") + File.separator + "novnc";
+			LocalLauncher localLauncher = new LocalLauncher(listener);
+			for (int i = 0; i < 1000 ; i++ )
+			{
+				lp = String.valueOf(localPort + i);
+				noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,lp,getVncServ()).start();
+				Thread.sleep(5000);
+				if (noVncProc.isAlive())
+				{
+					break;
+				}
+				else
+				{
+					try {noVncProc.kill();}catch (Exception e){} 
+				}
+			}
+			
+//			startNoVnc(build,listener,launcher);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
-		String hostAddr = InetAddress.getLocalHost().getHostAddress();
+		String hostAddr = InetAddress.getLocalHost().getHostName();
 		String url = "http://" + hostAddr + ":" + localPort + "/vnc_auto.html?host=" + hostAddr + "&port=" + localPort;
 		String txt = "Start vnc viewer for " + vncServ;
 		listener.getLogger().print('\n');
 		listener.annotate(new VncHyperlinkNote(url,txt.length()));
 		listener.getLogger().print(txt);
 		listener.getLogger().print("\n\n");
-
+		final Proc noVncProcFinal = noVncProc;
 		return new Environment() {
 			@Override
 			public void buildEnvVars(Map<String, String> env) {
@@ -152,7 +147,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 					ExpandableDetailsNote dn = new ExpandableDetailsNote("VNC viewer logs",loggingStream.toString());
 					listener.annotate(dn);
 					listener.getLogger().print('\n');
-					noVncProc.kill();
+					noVncProcFinal.kill();
 					loggingStream.close();
 				}
 				catch (Exception e)
