@@ -45,7 +45,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
-import java.util.Map;
 
 import net.sf.json.JSONObject;
 
@@ -64,7 +63,6 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	public VncViewerBuildWrapper(String vncServ) 
 	{
 		this.vncServ = vncServ;
-		//		this.vncServ = "10.137.12.222:5900"; //TODO
 	}
 
 	public String getVncServ() {
@@ -74,16 +72,16 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	public void setVncServ(String vncServ) {
 		this.vncServ = vncServ;
 	}
-	
+
 	@Override
 	public Environment setUp(@SuppressWarnings("rawtypes")AbstractBuild build, Launcher launcher,
 			final BuildListener listener) throws IOException, InterruptedException
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
 		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
-		int localPort = 8888;
+		int startPortNmb = 8888;
 		Proc noVncProc = null;
-		String lp = String.valueOf(localPort);
+		String lp = String.valueOf(startPortNmb);
 		final ByteArrayOutputStream loggingStream = new ByteArrayOutputStream();
 		if (vncServReplaced.isEmpty())
 			vncServReplaced = DESCRIPTOR.getDefaultVncServ();
@@ -96,7 +94,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		{
 			vncServReplaced = vncServReplaced.replace(":", ":59");
 		}
-		
+
 		try {
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"),System.getProperty("java.io.tmpdir"));
 			untar(VncViewerBuildWrapper.class.getResourceAsStream("/websockify.tar"),System.getProperty("java.io.tmpdir"));
@@ -110,7 +108,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			LocalLauncher localLauncher = new LocalLauncher(listener);
 			for (int i = 0; i < 1000 ; i++ )
 			{
-				lp = String.valueOf(localPort + i);
+				lp = String.valueOf(startPortNmb + i);
 				noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,lp,vncServReplaced).start();
 				Thread.sleep(5000);
 				if (noVncProc.isAlive())
@@ -122,8 +120,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 					try {noVncProc.kill();}catch (Exception e){} 
 				}
 			}
-			
-//			startNoVnc(build,listener,launcher);
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -138,19 +135,11 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		final Proc noVncProcFinal = noVncProc;
 		return new Environment() {
 			@Override
-			public void buildEnvVars(Map<String, String> env) {
-				//				env.put("PATH",env.get("PATH"));
-				//				env.put("DISPLAY", vncServReplaced);
-			}
-			@Override
 			public boolean tearDown(AbstractBuild build, BuildListener listener)
 					throws IOException, InterruptedException {
-
-
 				try {
 
-					ExpandableDetailsNote dn = new ExpandableDetailsNote("VNC viewer logs",loggingStream.toString());
-					listener.annotate(dn);
+					listener.annotate(new ExpandableDetailsNote("VNC viewer logs",loggingStream.toString()));
 					listener.getLogger().print('\n');
 					noVncProcFinal.kill();
 					loggingStream.close();
@@ -162,13 +151,12 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		};
 	}
 
-	@Extension(ordinal = -1)
+	@Extension(ordinal = -2)
 	public static final class DescriptorImpl extends BuildWrapperDescriptor {
 		public DescriptorImpl() {
 			super(VncViewerBuildWrapper.class);
 			load();
 		}
-
 
 		@Override
 		public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
@@ -206,7 +194,6 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	}
 
 	public static void untar(InputStream is, String dest) throws IOException {
-		//		  logger.info("Untar {}.",tarFile.getAbsolutePath());
 		TarInputStream tarIn = new TarInputStream(is);
 		try {
 			TarEntry tarEntry = tarIn.getNextEntry();
@@ -217,9 +204,11 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 					if (tarEntry.isDirectory()) 
 					{
 						destPath.mkdirs();
+						destPath.deleteOnExit();
 					} else 
 					{
 						destPath.createNewFile();
+						destPath.deleteOnExit();
 						byte [] btoRead = new byte[1024];
 						BufferedOutputStream bout = 
 								new BufferedOutputStream(new FileOutputStream(destPath));
@@ -229,7 +218,6 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 						{
 							bout.write(btoRead,0,len);
 						}
-
 						bout.close();
 						btoRead = null;
 					}
