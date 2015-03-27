@@ -28,7 +28,6 @@ import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
 import hudson.Proc;
 import hudson.Util;
-import hudson.console.ExpandableDetailsNote;
 import hudson.model.BuildListener;
 import hudson.model.Item;
 import hudson.model.AbstractBuild;
@@ -39,7 +38,6 @@ import hudson.tasks.BuildWrapperDescriptor;
 import hudson.util.FormValidation;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -82,7 +80,6 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		int startPortNmb = 8888;
 		Proc noVncProc = null;
 		String lp = String.valueOf(startPortNmb);
-		final ByteArrayOutputStream loggingStream = new ByteArrayOutputStream();
 		if (vncServReplaced.isEmpty())
 			vncServReplaced = DESCRIPTOR.getDefaultVncServ();
 
@@ -109,7 +106,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			for (int i = 0; i < 1000 ; i++ )
 			{
 				lp = String.valueOf(startPortNmb + i);
-				noVncProc = localLauncher.launch().stderr(loggingStream).stdout(loggingStream).cmds(webSockifyPath, "--web", webPath,lp,vncServReplaced).start();
+				noVncProc = localLauncher.launch().stderr(listener.getLogger()).stdout(listener.getLogger()).cmds(webSockifyPath, "--web", webPath,lp,vncServReplaced).start();
 				Thread.sleep(5000);
 				if (noVncProc.isAlive())
 				{
@@ -129,23 +126,16 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		String url = "http://" + hostAddr + ":" + lp + "/vnc_auto.html?host=" + hostAddr + "&port=" + lp;
 		String txt = "Start vnc viewer for " + vncServReplaced;
 		listener.getLogger().print('\n');
-		listener.annotate(new VncHyperlinkNote(url,txt.length()));
-		listener.getLogger().print(txt);
+		listener.annotate(new ConsoleNoteButton(txt,url));
 		listener.getLogger().print("\n\n");
 		final Proc noVncProcFinal = noVncProc;
 		return new Environment() {
 			@Override
 			public boolean tearDown(AbstractBuild build, BuildListener listener)
 					throws IOException, InterruptedException {
-				try {
-
-					listener.annotate(new ExpandableDetailsNote("VNC viewer logs",loggingStream.toString()));
-					listener.getLogger().print('\n');
-					noVncProcFinal.kill();
-					loggingStream.close();
-				}
-				catch (Exception e)
-				{} 
+				try {noVncProcFinal.getStderr().close();}catch (Exception e){}
+				try {noVncProcFinal.getStdout().close();}catch (Exception e){}
+				try {noVncProcFinal.kill();}catch (Exception e){}
 				return true;
 			}
 		};
@@ -174,7 +164,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			{
 				return FormValidation.errorWithMarkup("Vnc server can't be empty!" );
 			}
-			return FormValidation.okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserer is running on '" + value  + "'</font></strong>");
+			return FormValidation.okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserver is running on '" + value  + "'</font></strong>");
 		}
 
 		@Override
