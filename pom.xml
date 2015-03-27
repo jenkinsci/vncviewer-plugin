@@ -59,8 +59,8 @@
 		</developer>
 	</developers>
  <scm>
-    <connection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</connection>
-    <developerConnection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</developerConnection>
+    <connection>scm:svn:https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</connection>
+    <developerConnection>scm:svn:https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</developerConnection>
     <url>https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</url>
   </scm>
   
