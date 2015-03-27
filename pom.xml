@@ -12,7 +12,7 @@
 	</parent>
 	<groupId>org.jenkins-ci.plugins</groupId>
 	<artifactId>vncviewer</artifactId>
-	<version>1.1</version>
+	<version>1.0-SNAPSHOT</version>
 	<packaging>hpi</packaging>
 
 	<licenses>
@@ -59,9 +59,9 @@
 		</developer>
 	</developers>
  <scm>
-    <connection>scm:svn:https://svn.jenkins-ci.org/tags/vncviewer-1.1</connection>
-    <developerConnection>scm:svn:https://svn.jenkins-ci.org/tags/vncviewer-1.1</developerConnection>
-    <url>https://svn.jenkins-ci.org/tags/vncviewer-1.1</url>
+    <connection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</connection>
+    <developerConnection>scm:svn:https://svn.jenkins-ci.org/trunk/vncviewer</developerConnection>
+    <url>https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</url>
   </scm>
   
   <url>http://wiki.jenkins-ci.org/display/JENKINS/VncViewer+Plugin</url>
