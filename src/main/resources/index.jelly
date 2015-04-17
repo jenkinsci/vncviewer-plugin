@@ -3,6 +3,6 @@
   This view is used to render the installed plugins page.
 -->
 <div>
-  This plugin lets you monitor or operate GUI of your running build with HTTP based VNC viewer via HTML link directly from 'Console output'.
+  This plugin lets you monitor or operate GUI of your running build. HTML 5 based VNC viewer can be started via HTML link directly from 'Console output' of the build.
   This plugin can be used in combination with <a href="http://wiki.jenkins-ci.org/display/JENKINS/Xvnc+Plugin">Xvnc plugin</a> and <a href="http://wiki.jenkins-ci.org/display/JENKINS/VncRecorder+Plugin.">VncRecorder</a>
 </div>
