@@ -23,6 +23,7 @@
  * SUCH DAMAGE.
  */
 package org.jenkinsci.plugins.vncviewer;
+import jenkins.model.Jenkins;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
@@ -43,6 +44,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 import net.sf.json.JSONObject;
 
@@ -122,7 +125,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			e.printStackTrace();
 		}
 
-		String hostAddr = InetAddress.getLocalHost().getHostName();
+		String hostAddr = determineJenkinsHostAddress(listener);
 		String url = "http://" + hostAddr + ":" + lp + "/vnc_auto.html?host=" + hostAddr + "&port=" + lp;
 		String txt = "Start vnc viewer for " + vncServReplaced;
 		listener.getLogger().print('\n');
@@ -139,6 +142,28 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 				return true;
 			}
 		};
+	}
+
+	private String determineJenkinsHostAddress(final BuildListener listener) throws IOException {
+		String jenkinsRootUrl = Jenkins.getInstance().getRootUrl();
+		if (jenkinsRootUrl!=null) {
+			try {
+				return new URL(jenkinsRootUrl).getHost();
+			} catch (MalformedURLException e) {
+				listener.getLogger().println(String.format("Unable to determine jenkins address from jenkins url '%s'", jenkinsRootUrl));
+				return fallbackHostAddress(listener);
+			}
+		} else {
+			listener.getLogger().println("Unable to determine jenkins address - jenkins url is not set");
+			return fallbackHostAddress(listener);
+		}
+	}
+
+	private String fallbackHostAddress(final BuildListener listener) throws IOException {
+		// fallback to jenkins machine hostname
+		String hostAddr = InetAddress.getLocalHost().getHostName();
+		listener.getLogger().println(String.format("Assuming machine hostname '%s' as VNC viewer address", hostAddr));
+		return hostAddr;
 	}
 
 	@Extension(ordinal = -2)
