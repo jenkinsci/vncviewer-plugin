@@ -23,21 +23,6 @@
  * SUCH DAMAGE.
  */
 package org.jenkinsci.plugins.vncviewer;
-import jenkins.model.Jenkins;
-import hudson.Extension;
-import hudson.Launcher;
-import hudson.Launcher.LocalLauncher;
-import hudson.Proc;
-import hudson.Util;
-import hudson.model.BuildListener;
-import hudson.model.Item;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Hudson;
-import hudson.tasks.BuildWrapper;
-import hudson.tasks.BuildWrapperDescriptor;
-import hudson.util.FormValidation;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -45,9 +30,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
 import java.net.URL;
-
-import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.SystemUtils;
 import org.apache.tools.tar.TarEntry;
@@ -56,6 +40,22 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+
+import hudson.Extension;
+import hudson.Launcher;
+import hudson.Launcher.LocalLauncher;
+import hudson.Proc;
+import hudson.Util;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import hudson.model.BuildListener;
+import hudson.model.Hudson;
+import hudson.model.Item;
+import hudson.tasks.BuildWrapper;
+import hudson.tasks.BuildWrapperDescriptor;
+import hudson.util.FormValidation;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
 
 
 public class VncViewerBuildWrapper extends BuildWrapper {
@@ -80,7 +80,9 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
 		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
-		int startPortNmb = 8888;
+		int freePort = findFreePort();
+		int startPortNmb = freePort > 0 ? freePort : 8888;
+//		int startPortNmb = 8888;
 		Proc noVncProc = null;
 		String lp = String.valueOf(startPortNmb);
 		if (vncServReplaced.isEmpty())
@@ -143,6 +145,22 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			}
 		};
 	}
+	
+	public static int findFreePort() {
+		ServerSocket socket= null;
+		try
+		{ socket= new ServerSocket(0); return socket.getLocalPort(); }
+		catch (IOException e) { 
+		} finally {
+			if (socket != null) {
+				try
+				{ socket.close(); }
+				catch (IOException e) {
+				}
+			}
+		}
+		return -1;	
+	}	
 
 	private String determineJenkinsHostAddress(final BuildListener listener) throws IOException {
 		String jenkinsRootUrl = Jenkins.getInstance().getRootUrl();
