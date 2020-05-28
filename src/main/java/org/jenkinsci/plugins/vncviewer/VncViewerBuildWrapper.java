@@ -41,6 +41,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
@@ -75,6 +76,8 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 	}
 
 	@Override
+	@SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE",
+    justification = "avoid false posititive")
 	public Environment setUp(@SuppressWarnings("rawtypes")AbstractBuild build, Launcher launcher,
 			final BuildListener listener) throws IOException, InterruptedException
 	{
@@ -136,6 +139,8 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		final Proc noVncProcFinal = noVncProc;
 		return new Environment() {
 			@Override
+			@SuppressFBWarnings(value = "DE_MIGHT_IGNORE",
+		    justification = "ignore Exceptions on teardown")
 			public boolean tearDown(AbstractBuild build, BuildListener listener)
 					throws IOException, InterruptedException {
 				try {noVncProcFinal.getStderr().close();}catch (Exception e){}
@@ -161,7 +166,8 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 		}
 		return -1;	
 	}	
-
+	@SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE",
+	        justification = "avoid false posititive")
 	private String determineJenkinsHostAddress(final BuildListener listener) throws IOException {
 		String jenkinsRootUrl = Jenkins.getInstance().getRootUrl();
 		if (jenkinsRootUrl!=null) {
@@ -236,11 +242,18 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 				if (!destPath.exists())
 					if (tarEntry.isDirectory()) 
 					{
-						destPath.mkdirs();
+						if (!destPath.mkdirs())
+						{
+							System.err.println("Can't remove " + destPath.toString() + "!");
+						}
 						destPath.deleteOnExit();
 					} else 
 					{
-						destPath.createNewFile();
+						boolean rc = destPath.createNewFile();
+						if (!rc)
+						{
+							System.err.println(destPath.toString() + " already exists! ");
+						}
 						destPath.deleteOnExit();
 						byte [] btoRead = new byte[1024];
 						BufferedOutputStream bout = 
