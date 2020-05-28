@@ -79,7 +79,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			final BuildListener listener) throws IOException, InterruptedException
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
-		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
+		String vncServReplaced = Util.escape(Util.replaceMacro(vncServ,build.getEnvironment(listener)));
 		int freePort = findFreePort();
 		int startPortNmb = freePort > 0 ? freePort : 8888;
 //		int startPortNmb = 8888;
