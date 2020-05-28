@@ -21,12 +21,10 @@
 			<url>http://opensource.org/licenses/MIT</url>
 		</license>
 	</licenses>
-	<!-- If you want this to appear on the wiki page: <developers> <developer> 
-		<id>bhacker</id> <name>Bob Q. Hacker</name> <email>bhacker@nowhere.net</email> 
-		</developer> </developers> -->
-	<!-- Assuming you want to host on @jenkinsci: <scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection> 
+	
+	<scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection> 
 		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection> 
-		<url>http://github.com/jenkinsci/${project.artifactId}-plugin</url> </scm> -->
+		<url>http://github.com/jenkinsci/${project.artifactId}-plugin</url> </scm>
 	<repositories>
 		<repository>
 			<id>repo.jenkins-ci.org</id>
@@ -58,11 +56,6 @@
 			<email>dim.tbaum@gmail.com</email>
 		</developer>
 	</developers>
- <scm>
-    <connection>scm:svn:https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</connection>
-    <developerConnection>scm:svn:https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</developerConnection>
-    <url>https://svn.jenkins-ci.org/trunk/hudson/plugins/vncviewer</url>
-  </scm>
   
   <url>http://wiki.jenkins-ci.org/display/JENKINS/VncViewer+Plugin</url>
   <description>This plugin lets you start HTTP based VNC viewer via HTML link directly from Console output</description>
