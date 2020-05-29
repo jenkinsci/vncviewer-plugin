@@ -82,7 +82,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			final BuildListener listener) throws IOException, InterruptedException
 	{
 		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
-		String vncServReplaced = Util.escape(Util.replaceMacro(vncServ,build.getEnvironment(listener)));
+		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
 		int freePort = findFreePort();
 		int startPortNmb = freePort > 0 ? freePort : 8888;
 //		int startPortNmb = 8888;
@@ -213,7 +213,7 @@ public class VncViewerBuildWrapper extends BuildWrapper {
 			{
 				return FormValidation.errorWithMarkup("Vnc server can't be empty!" );
 			}
-			return FormValidation.okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserver is running on '" + value  + "'</font></strong>");
+			return FormValidation.okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserver is running on '" + Util.xmlEscape(value)  + "'</font></strong>");
 		}
 
 		@Override
