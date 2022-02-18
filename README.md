@@ -4,14 +4,14 @@ Jenkins vncviewer plugin
 VncViewer lets you monitor or operate GUI of your running build. You can start HTML5 based VNC viewer via HTML link directly from 'Console output'. This plugin can be used in combination with Xvnc and VncRecorder plugins.
 
 The plugin uses internally HTML5 based VNC client noVNC. 
-Example for usage in pipeline:
+Example for usage in pipeline, in combination with Xvnc plugin:
 ```
 stages {
         stage('Build') { 
             steps { 
                 wrap([$class: 'Xvnc', takeScreenshot: false, useXauthority: true]) 
                 {
-                 wrap([$class: '**VncViewerBuildWrapper**', vncServ: 'localhost:$DISPLAY']) 
+                 wrap([$class: 'VncViewerBuildWrapper', vncServ: 'localhost:$DISPLAY']) 
                  {
                   sh doSomething..
                  }
