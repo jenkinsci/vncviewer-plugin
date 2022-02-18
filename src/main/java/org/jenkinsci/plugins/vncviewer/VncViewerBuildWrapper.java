@@ -23,11 +23,13 @@
  * SUCH DAMAGE.
  */
 package org.jenkinsci.plugins.vncviewer;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
@@ -42,238 +44,270 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Launcher.LocalLauncher;
 import hudson.Proc;
 import hudson.Util;
-import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
-import hudson.model.Hudson;
 import hudson.model.Item;
-import hudson.tasks.BuildWrapper;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildWrapperDescriptor;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
+import jenkins.tasks.SimpleBuildWrapper;
 import net.sf.json.JSONObject;
 
+public class VncViewerBuildWrapper extends SimpleBuildWrapper
+{
+  private static final String JAVA_IO_TMPDIR = "java.io.tmpdir";
+  private String vncServ;
 
-public class VncViewerBuildWrapper extends BuildWrapper {
-	private String vncServ;
-	@DataBoundConstructor
-	public VncViewerBuildWrapper(String vncServ) 
-	{
-		this.vncServ = vncServ;
-	}
+  @DataBoundConstructor
+  public VncViewerBuildWrapper(String vncServ)
+  {
+    this.vncServ = vncServ;
+  }
 
-	public String getVncServ() {
-		return vncServ;
-	}
+  public String getVncServ()
+  {
+    return vncServ;
+  }
 
-	public void setVncServ(String vncServ) {
-		this.vncServ = vncServ;
-	}
+  public void setVncServ(String vncServ)
+  {
+    this.vncServ = vncServ;
+  }
 
-	@Override
-	@SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE",
-    justification = "avoid false posititive")
-	public Environment setUp(@SuppressWarnings("rawtypes")AbstractBuild build, Launcher launcher,
-			final BuildListener listener) throws IOException, InterruptedException
-	{
-		DescriptorImpl DESCRIPTOR = Hudson.getInstance().getDescriptorByType(DescriptorImpl.class);
-		String vncServReplaced = Util.replaceMacro(vncServ,build.getEnvironment(listener));
-		int freePort = findFreePort();
-		int startPortNmb = freePort > 0 ? freePort : 8888;
-//		int startPortNmb = 8888;
-		Proc noVncProc = null;
-		String lp = String.valueOf(startPortNmb);
-		if (vncServReplaced.isEmpty())
-			vncServReplaced = DESCRIPTOR.getDefaultVncServ();
+  @Override
+  public void setUp(Context context, Run<?, ?> build, FilePath workspace, Launcher launcher, TaskListener listener,
+      EnvVars initialEnvironment) throws IOException, InterruptedException
+  {
+    DescriptorImpl descriptor = Jenkins.getInstanceOrNull().getDescriptorByType(DescriptorImpl.class);
+    String vncServReplaced = Util.replaceMacro(vncServ, initialEnvironment);
+    int freePort = findFreePort();
+    int startPortNmb = freePort > 0 ? freePort : 8888;
+    Proc noVncProc = null;
+    String lp = String.valueOf(startPortNmb);
+    if (vncServReplaced.isEmpty())
+      vncServReplaced = descriptor.getDefaultVncServ();
 
-		if (vncServReplaced.indexOf(":") < 0)
-		{
-			vncServReplaced += ":5900";
-		}
-		if (vncServReplaced.split(":")[1].length() == 2)
-		{
-			vncServReplaced = vncServReplaced.replace(":", ":59");
-		}
+    if (vncServReplaced.indexOf(":") < 0)
+    {
+      vncServReplaced += ":5900";
+    }
+    if (vncServReplaced.split(":")[1].length() == 2)
+    {
+      vncServReplaced = vncServReplaced.replace(":", ":59");
+    }
 
-		try {
-			untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"),System.getProperty("java.io.tmpdir"));
-			untar(VncViewerBuildWrapper.class.getResourceAsStream("/websockify.tar"),System.getProperty("java.io.tmpdir"));
-			String webSockifyPath = System.getProperty("java.io.tmpdir") + File.separator + "websockify" + File.separator + "websockify.py";
-			File f = new File(webSockifyPath);
-			if (!f.canExecute())
-			{
-				f.setExecutable(true);
-			}
-			String webPath = System.getProperty("java.io.tmpdir") + File.separator + "novnc";
-			LocalLauncher localLauncher = new LocalLauncher(listener);
-			for (int i = 0; i < 1000 ; i++ )
-			{
-				lp = String.valueOf(startPortNmb + i);
-				noVncProc = localLauncher.launch().stderr(listener.getLogger()).stdout(listener.getLogger()).cmds(webSockifyPath, "--web", webPath,lp,vncServReplaced).start();
-				Thread.sleep(5000);
-				if (noVncProc.isAlive())
-				{
-					break;
-				}
-				else
-				{
-					try {noVncProc.kill();}catch (Exception e){} 
-				}
-			}
+    untar(VncViewerBuildWrapper.class.getResourceAsStream("/novnc.tar"), System.getProperty(JAVA_IO_TMPDIR),
+        listener.getLogger());
+    untar(VncViewerBuildWrapper.class.getResourceAsStream("/websockify.tar"), System.getProperty(JAVA_IO_TMPDIR),
+        listener.getLogger());
+    String webSockifyPath = System.getProperty(JAVA_IO_TMPDIR) + File.separator + "websockify" + File.separator
+        + "websockify.py";
+    File f = new File(webSockifyPath);
+    if (!f.canExecute() || !f.setExecutable(true))
+    {
+      listener.getLogger().print("Failed set executable bit on: " + f.getAbsolutePath());
+    }
+    String webPath = System.getProperty(JAVA_IO_TMPDIR) + File.separator + "novnc";
+    LocalLauncher localLauncher = new LocalLauncher(listener);
+    for (int i = 0; i < 1000; i++)
+    {
+      lp = String.valueOf(startPortNmb + i);
+      noVncProc = localLauncher.launch().stderr(listener.getLogger()).stdout(listener.getLogger())
+          .cmds(webSockifyPath, "--web", webPath, lp, vncServReplaced).start();
+      Thread.sleep(5000);
+      if (noVncProc.isAlive())
+      {
+        break;
+      }
+      else
+      {
+        noVncProc.kill();
+      }
+    }
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+    String hostAddr = determineJenkinsHostAddress(listener);
+    String url = "http://" + hostAddr + ":" + lp + "/vnc_auto.html?host=" + hostAddr + "&port=" + lp;
+    String txt = "Start vnc viewer for " + vncServReplaced;
+    listener.getLogger().print('\n');
+    listener.annotate(new ConsoleNoteButton(txt, url));
+    listener.getLogger().print("\n\n");
+    context.setDisposer(new DisposerImpl(noVncProc));
+  }
 
-		String hostAddr = determineJenkinsHostAddress(listener);
-		String url = "http://" + hostAddr + ":" + lp + "/vnc_auto.html?host=" + hostAddr + "&port=" + lp;
-		String txt = "Start vnc viewer for " + vncServReplaced;
-		listener.getLogger().print('\n');
-		listener.annotate(new ConsoleNoteButton(txt,url));
-		listener.getLogger().print("\n\n");
-		final Proc noVncProcFinal = noVncProc;
-		return new Environment() {
-			@Override
-			@SuppressFBWarnings(value = "DE_MIGHT_IGNORE",
-		    justification = "ignore Exceptions on teardown")
-			public boolean tearDown(AbstractBuild build, BuildListener listener)
-					throws IOException, InterruptedException {
-				try {noVncProcFinal.getStderr().close();}catch (Exception e){}
-				try {noVncProcFinal.getStdout().close();}catch (Exception e){}
-				try {noVncProcFinal.kill();}catch (Exception e){}
-				return true;
-			}
-		};
-	}
-	
-	public static int findFreePort() {
-		ServerSocket socket= null;
-		try
-		{ socket= new ServerSocket(0); return socket.getLocalPort(); }
-		catch (IOException e) { 
-		} finally {
-			if (socket != null) {
-				try
-				{ socket.close(); }
-				catch (IOException e) {
-				}
-			}
-		}
-		return -1;	
-	}	
-	@SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE",
-	        justification = "avoid false posititive")
-	private String determineJenkinsHostAddress(final BuildListener listener) throws IOException {
-		String jenkinsRootUrl = Jenkins.getInstance().getRootUrl();
-		if (jenkinsRootUrl!=null) {
-			try {
-				return new URL(jenkinsRootUrl).getHost();
-			} catch (MalformedURLException e) {
-				listener.getLogger().println(String.format("Unable to determine jenkins address from jenkins url '%s'", jenkinsRootUrl));
-				return fallbackHostAddress(listener);
-			}
-		} else {
-			listener.getLogger().println("Unable to determine jenkins address - jenkins url is not set");
-			return fallbackHostAddress(listener);
-		}
-	}
+  private static class DisposerImpl extends Disposer
+  {
 
-	private String fallbackHostAddress(final BuildListener listener) throws IOException {
-		// fallback to jenkins machine hostname
-		String hostAddr = InetAddress.getLocalHost().getHostName();
-		listener.getLogger().println(String.format("Assuming machine hostname '%s' as VNC viewer address", hostAddr));
-		return hostAddr;
-	}
+    private static final long serialVersionUID = 1L;
+    private transient Proc noVncProc;
 
-	@Extension(ordinal = -2)
-	public static final class DescriptorImpl extends BuildWrapperDescriptor {
-		public DescriptorImpl() {
-			super(VncViewerBuildWrapper.class);
-			load();
-		}
+    public DisposerImpl(Proc noVncProc)
+    {
+      this.noVncProc = noVncProc;
+    }
 
-		@Override
-		public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-			req.bindJSON(this,json);
-			save();
-			return true;
-		}
+    @Override
+    public void tearDown(Run<?, ?> build, FilePath workspace, Launcher launcher, TaskListener listener)
+        throws IOException, InterruptedException
+    {
+      final Proc noVncProcFinal = noVncProc;
+      try (InputStream stderr = noVncProcFinal.getStderr(); InputStream stdout = noVncProcFinal.getStdout())
+      {
+        noVncProcFinal.kill();
+      }
+    }
 
-		public FormValidation doCheckVncServ(@AncestorInPath AbstractProject<?,?> project, @QueryParameter String value ) {
-			if(!project.hasPermission(Item.CONFIGURE)){
-				return FormValidation.ok();
-			}
+  }
 
-			if (value.isEmpty())
-			{
-				return FormValidation.errorWithMarkup("Vnc server can't be empty!" );
-			}
-			return FormValidation.okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserver is running on '" + Util.xmlEscape(value)  + "'</font></strong>");
-		}
+  public static int findFreePort()
+  {
+    try (ServerSocket socket = new ServerSocket(0))
+    {
+      return socket.getLocalPort();
+    }
+    catch (IOException e)
+    {
+      return -1;
+    }
+  }
 
-		@Override
-		public String getDisplayName() {
-			return "Enable VNC viewer";
-		}
+  @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "avoid false posititive")
+  private String determineJenkinsHostAddress(final TaskListener listener) throws IOException
+  {
+    Jenkins jenkins = Jenkins.getInstanceOrNull();
+    String jenkinsRootUrl = jenkins == null ? null : jenkins.getRootUrl();
+    if (jenkinsRootUrl != null)
+    {
+      try
+      {
+        return new URL(jenkinsRootUrl).getHost();
+      }
+      catch (MalformedURLException e)
+      {
+        listener.getLogger()
+            .println(String.format("Unable to determine jenkins address from jenkins url '%s'", jenkinsRootUrl));
+        return fallbackHostAddress(listener);
+      }
+    }
+    else
+    {
+      listener.getLogger().println("Unable to determine jenkins address - jenkins url is not set");
+      return fallbackHostAddress(listener);
+    }
+  }
 
-		public String getDefaultVncServ()
-		{
-			return "localhost:5900";
-		}
+  private String fallbackHostAddress(final TaskListener listener) throws IOException
+  {
+    // fallback to jenkins machine hostname
+    String hostAddr = InetAddress.getLocalHost().getHostName();
+    listener.getLogger().println(String.format("Assuming machine hostname '%s' as VNC viewer address", hostAddr));
+    return hostAddr;
+  }
 
-		@Override
-		public boolean isApplicable(AbstractProject<?, ?> item) {
-			return !SystemUtils.IS_OS_WINDOWS;
-		}
-	}
+  @Extension(ordinal = -2)
+  public static final class DescriptorImpl extends BuildWrapperDescriptor
+  {
+    private static final String DEFAULT_VNS_SERV = "localhost:5900";
 
-	public static void untar(InputStream is, String dest) throws IOException {
-		TarInputStream tarIn = new TarInputStream(is);
-		try {
-			TarEntry tarEntry = tarIn.getNextEntry();
+    public DescriptorImpl()
+    {
+      super(VncViewerBuildWrapper.class);
+      load();
+    }
 
-			while (tarEntry != null) {// create a file with the same name as the tarEntry
-				File destPath = new File(dest, tarEntry.getName());
-				if (!destPath.exists())
-					if (tarEntry.isDirectory()) 
-					{
-						if (!destPath.mkdirs())
-						{
-							System.err.println("Can't remove " + destPath.toString() + "!");
-						}
-						destPath.deleteOnExit();
-					} else 
-					{
-						boolean rc = destPath.createNewFile();
-						if (!rc)
-						{
-							System.err.println(destPath.toString() + " already exists! ");
-						}
-						destPath.deleteOnExit();
-						byte [] btoRead = new byte[1024];
-						BufferedOutputStream bout = 
-								new BufferedOutputStream(new FileOutputStream(destPath));
-						int len = 0;
+    @Override
+    public boolean configure(StaplerRequest req, JSONObject json) throws FormException
+    {
+      req.bindJSON(this, json);
+      save();
+      return true;
+    }
 
-						while((len = tarIn.read(btoRead)) != -1)
-						{
-							bout.write(btoRead,0,len);
-						}
-						bout.close();
-						btoRead = null;
-					}
-				tarEntry = tarIn.getNextEntry();
-			}
-		}
-		finally {
-			tarIn.close();
-		}
-	}
+    public FormValidation doCheckVncServ(@AncestorInPath AbstractProject<?, ?> project, @QueryParameter String value)
+    {
+      if (!project.hasPermission(Item.CONFIGURE))
+      {
+        return FormValidation.ok();
+      }
+
+      if (value.isEmpty())
+      {
+        return FormValidation.errorWithMarkup("Vnc server can't be empty!");
+      }
+      return FormValidation
+          .okWithMarkup("<strong><font color=\"blue\">Please, make sure that your vncserver is running on '"
+              + Util.xmlEscape(value) + "'</font></strong>");
+    }
+
+    @Override
+    public String getDisplayName()
+    {
+      return "Enable VNC viewer";
+    }
+
+    public String getDefaultVncServ()
+    {
+      return DEFAULT_VNS_SERV;
+    }
+
+    @Override
+    public boolean isApplicable(AbstractProject<?, ?> item)
+    {
+      return !SystemUtils.IS_OS_WINDOWS;
+    }
+  }
+
+  public static void untar(InputStream is, String dest, PrintStream logger) throws IOException
+  {
+    try (TarInputStream tarIn = new TarInputStream(is))
+    {
+      TarEntry tarEntry = tarIn.getNextEntry();
+
+      while (tarEntry != null)
+      {// create a file with the same name as the tarEntry
+        File destPath = new File(dest, tarEntry.getName());
+        if (destPath.exists())
+        {
+          tarEntry = tarIn.getNextEntry();
+          continue;
+        }
+        if (tarEntry.isDirectory())
+        {
+          if (!destPath.mkdirs())
+          {
+            logger.println("Can't create " + destPath.toString() + "!");
+          }
+          destPath.deleteOnExit();
+        }
+        else
+        {
+          boolean rc = destPath.createNewFile();
+          if (!rc)
+          {
+            logger.println(destPath.toString() + " already exists! ");
+          }
+          destPath.deleteOnExit();
+          byte[] btoRead = new byte[1024];
+          try (BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(destPath)))
+          {
+            int len = 0;
+
+            while ((len = tarIn.read(btoRead)) != -1)
+            {
+              bout.write(btoRead, 0, len);
+            }
+            btoRead = null;
+          }
+        }
+        tarEntry = tarIn.getNextEntry();
+      }
+    }
+  }
 }
-
-
