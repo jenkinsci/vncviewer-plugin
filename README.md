@@ -5,16 +5,16 @@ VncViewer lets you monitor or operate GUI of your running build. You can start H
 
 The plugin uses internally HTML5 based VNC client noVNC. 
 Example for usage in pipeline:
-stages {
+`stages {
         stage('Build') { 
             steps { 
                 wrap([$class: 'Xvnc', takeScreenshot: false, useXauthority: true]) 
                 {
-                 wrap([$class: 'VncViewerBuildWrapper', vncServ: 'localhost:$DISPLAY']) 
+                 wrap([$class: '**VncViewerBuildWrapper**', vncServ: 'localhost:$DISPLAY']) 
                  {
                   sh doSomething..
                  }
                 }
             }
-        }
+        }`
 See https://plugins.jenkins.io/vncviewer/ for more details.
