@@ -86,7 +86,13 @@ public class VncViewerBuildWrapper extends SimpleBuildWrapper
   public void setUp(Context context, Run<?, ?> build, FilePath workspace, Launcher launcher, TaskListener listener,
       EnvVars initialEnvironment) throws IOException, InterruptedException
   {
-    DescriptorImpl descriptor = Jenkins.getInstanceOrNull().getDescriptorByType(DescriptorImpl.class);
+    Jenkins jenkins = Jenkins.getInstanceOrNull();
+    if (jenkins == null)
+    {
+      listener.fatalError("Jenkins.getInstanceOrNull() returned null!" );
+      return;
+    }
+    DescriptorImpl descriptor = jenkins.getDescriptorByType(DescriptorImpl.class);
     String vncServReplaced = Util.replaceMacro(vncServ, initialEnvironment);
     int freePort = findFreePort();
     int startPortNmb = freePort > 0 ? freePort : 8888;
