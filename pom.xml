@@ -13,7 +13,7 @@
 		<java.level>8</java.level>
 	</properties>
 	<artifactId>vncviewer</artifactId>
-	<version>1.9</version>
+	<version>1.10-SNAPSHOT</version>
 	<packaging>hpi</packaging>
 
 	<licenses>
@@ -27,7 +27,7 @@
 		<connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
 		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
 		<url>http://github.com/jenkinsci/${project.artifactId}-plugin</url>
-		<tag>vncviewer-1.9</tag>
+		<tag>HEAD</tag>
 	</scm>
 	<!-- If you want to depend on other plugins: <dependencies> <dependency> 
 		<groupId>org.jenkins-ci.plugins</groupId> <artifactId>credentials</artifactId> 
